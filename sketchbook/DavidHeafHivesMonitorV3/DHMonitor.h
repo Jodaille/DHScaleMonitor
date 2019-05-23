@@ -3,7 +3,7 @@
 */
 /**
  * We are using the library RTClib
- * cf: https://github.com/adafruit/RTClib/archive/master.zip
+ * cf: https://github.com/MrAlvin/RTClib
  */
 #include "RTClib.h"
 #include "SdFat.h"
