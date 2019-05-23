@@ -20,6 +20,8 @@ class DHMonitor
         String getTime();
         int readBatteryVoltage();
         float readVcc();
+        void ledOn();
+        void ledOff();
 
     private:
         bool sDisReady;
