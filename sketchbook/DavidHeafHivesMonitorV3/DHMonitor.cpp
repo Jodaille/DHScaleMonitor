@@ -1,14 +1,27 @@
 /**
 *
 */
-#define DEBUG   1
+//#define DEBUG   1
 #include "DHMonitor.h"
 #include <Arduino.h> // need for pinouts constants at least
 #include <string.h>
+#define LED_pin 7
 
 DHMonitor::DHMonitor() : interval(1000), BatteryPin(A3), voltageDividerR1(1000000.0), voltageDividerR2(1000000.0), voltageDividerTuning(1.01389)
 {
   SampleIntervalMinutes = 1;// One minute record
+}
+
+void DHMonitor::ledOn()
+{
+  pinMode(LED_pin, OUTPUT);
+  digitalWrite(LED_pin, HIGH);
+}
+
+void DHMonitor::ledOff()
+{
+  pinMode(LED_pin, OUTPUT);
+  digitalWrite(LED_pin, LOW);
 }
 
 bool DHMonitor::initSdCard(int chipSelect)
@@ -25,6 +38,8 @@ bool DHMonitor::initSdCard(int chipSelect)
     sDisReady = true;
   }
   else {
+    ledOn();
+    Serial.begin(115200);
     Serial.println(F("Card failed, or not present"));
     Serial.flush();
   }
@@ -41,14 +56,15 @@ bool DHMonitor::writeLine(String tolog)
   if (dataFile) {
     dataFile.println(tolog);
     dataFile.close();
+    ledOff();
   }
   else
   {
     sDisReady = false;
-    #if DEBUG
-      Serial.println("could not write file");   // send "file line" to computer serial
-      Serial.flush();delay(5); // needed to flush serial when woke up
-    #endif
+
+    Serial.println("could not write file");
+    Serial.flush();delay(5); // needed to flush serial when woke up
+
   }
 }
 
@@ -66,12 +82,14 @@ void DHMonitor::setInterval(DateTime now)
         Alarmhour = 0;
       }
     }
-    Serial.print(F("alarm d:"));Serial.print(Alarmday);Serial.print(F(" h:"));Serial.print(Alarmhour);Serial.print(F(" m:"));Serial.print(Alarmminute);  
-    Serial.println();Serial.flush();
+    #if DEBUG
+      Serial.print(F("alarm d:"));Serial.print(Alarmday);Serial.print(F(" h:"));Serial.print(Alarmhour);Serial.print(F(" m:"));Serial.print(Alarmminute);
+      Serial.println();Serial.flush();
+    #endif
 }
 void DHMonitor::disableAlarm()
 {
-  if (RTC.checkIfAlarm(1)) {       //Is the RTC alarm still on?    
+  if (RTC.checkIfAlarm(1)) {       //Is the RTC alarm still on?
     RTC.turnOffAlarm(1);              //then turn it off.
   }
 }
