@@ -2,14 +2,14 @@
  * DavidHeafHivesMonitor v3
  * Read/record temperatures of 6 sensors
  * DS18B20 using their addresses
- * 
+ *
  * try to refactor DavidHeafHivesMonitor V2
  * using tricks from The Cave Pearl Project:
  * https://thecavepearlproject.org
- * 
+ *
  * Arduino Pro mini 3.3V@8MHz in deep sleep, wake up by RTC
  * every minutes to read sensors and write to sdCard
- * 
+ *
  * cf: https://github.com/EKMallon/ProMiniDatalogger-BasicStarterSketch
  */
 /*
@@ -18,10 +18,10 @@
   => 104 days
   1000mAh / 0.31 = 3225h
   => 134 days
-  
+
 */
 
-#define DEBUG   1 // set to 1 to trace activity via serial console
+#define DEBUG   0 // set to 1 to trace activity via serial console
 const char DELIMITER = ','; // value delimiter in file
 
 #include <HX711_ADC.h>
@@ -29,7 +29,7 @@ const char DELIMITER = ','; // value delimiter in file
 #include "EEPROMAnything.h"
 
 //HX711 constructor (dout pin, sck pin):
-HX711_ADC LoadCell(5, 4);
+HX711_ADC LoadCell(4, 5);
 long t;// keep last loop millis()
 
 float calValue; // calibration value
@@ -72,6 +72,7 @@ void EEPROMSave() {
 #include "DHMonitor.h"
 #include <LowPower.h>   // https://github.com/rocketscream/Low-Power //for low power sleeping between readings
 
+#define LED_pin 7
 #define RTC_power_pin 9
 DHMonitor monitor;
 
@@ -120,6 +121,7 @@ DallasTemperature sensors(&oneWire);
  */
 
 DeviceAddress temperature1 {0x28, 0xFF, 0xE7, 0x30, 0xB3, 0x16, 0x04, 0xF4};
+//DeviceAddress temperature1 {0x28, 0xFF, 0xA8, 0xFD, 0xB2, 0x16, 0x03, 0xFE};
 //DeviceAddress temperature2 {0x28, 0x20, 0x7B, 0x08, 0x00, 0x00, 0x80, 0x25};
 //DeviceAddress temperature3 {0x28, 0xDE, 0x61, 0x08, 0x00, 0x00, 0x80, 0x85};
 //DeviceAddress temperature4 {0x28, 0xBE, 0xCB, 0x27, 0x00, 0x00, 0x80, 0x22};
@@ -178,9 +180,13 @@ volatile bool sDisReady = false; // only try to write if sd is ready (detected)
 volatile boolean clockInterrupt = false;  //this flag is set to true when the RTC interrupt handler is executed
 volatile unsigned int countReading = 0;
 volatile float weight;
+
+
 void setup(void)
 {
+  monitor.ledOn();
   // Serial port initialisation (to communicate with computer)
+  //Serial.begin(115200);
   #if DEBUG
     Serial.begin(115200);
     Serial.println("start");
@@ -192,23 +198,29 @@ void setup(void)
   long stabilisingtime = 2000; // tare preciscion can be improved by adding a few seconds of stabilising time
   LoadCell.start(stabilisingtime);
   if(LoadCell.getTareTimeoutFlag()) {
+    Serial.begin(115200);
     Serial.println("Tare timeout, check MCU>HX711 wiring and pin designations");
   }
   else {
     LoadCell.setCalFactor(calValue); // set calibration value (float)
-    Serial.println("Startup + tare is complete");
+    #if DEBUG
+      Serial.println("Startup + tare is complete");
+    #endif
   }
   updateStatus = LoadCell.update();
   LoadCell.setTareOffset(tareOffset);
 
   pinMode(RTC_power_pin, OUTPUT);
   digitalWrite(RTC_power_pin, LOW);
+  #if DEBUG
+    Serial.print("readBatteryVoltage: ");
+    Serial.println(monitor.readBatteryVoltage());
+  #endif
 
-  Serial.print("readBatteryVoltage: ");
-  Serial.println(monitor.readBatteryVoltage());
-
-  Serial.print("getTime: ");
-  Serial.println(monitor.getTime());Serial.print("END getTime: ");
+  #if DEBUG
+    Serial.print("getTime: ");
+    Serial.println(monitor.getTime());Serial.print("END getTime: ");
+  #endif
 
   pinMode(RTC_INTERRUPT_PIN,INPUT_PULLUP);// RTC alarms low, so need pullup on the D2 line
   clearClockTrigger();
@@ -218,7 +230,9 @@ void setup(void)
   sDisReady = monitor.initSdCard(chipSelect);
 
   delay(5);
-  Serial.println("Sensors initialisation");
+  #if DEBUG
+    Serial.println("Sensors initialisation");
+  #endif
   // sensors initialisation
   sensors.begin();
   delay(5);
@@ -237,11 +251,13 @@ void loop(void)
     if (isUpdated) {
       countReading++;
       weight = LoadCell.getData();
+
       #if DEBUG
         Serial.print("countReading:");Serial.print(countReading);
         Serial.print(" index:");Serial.print(LoadCell.getReadIndex());
         Serial.print(" w:");Serial.println(weight);Serial.flush();
       #endif
+
     }
 
     if ( countReading > (SAMPLES -1) ) {
@@ -262,7 +278,7 @@ void loop(void)
         #endif
       }
       monitor.setNextWakeUp(); // create alarm that will wake up us
-  
+
       //——– sleep and wait for next RTC alarm ————–
       // Enable interrupt on pin2 & attach it to rtcISR function:
       attachInterrupt(0, rtcISR, LOW);
@@ -376,7 +392,7 @@ String buildString()
   LoadCell.update();
   float weight = LoadCell.getData();
   dataString += String(weight);
-  dataString += DELIMITER; 
+  dataString += DELIMITER;
   return dataString;
 }
 
