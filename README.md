@@ -27,3 +27,6 @@ cf: https://github.com/PaulStoffregen/OneWire/archive/master.zip
 
 DallasTemperature:
 https://github.com/milesburton/Arduino-Temperature-Control-Library
+
+SdFat:
+https://github.com/greiman/SdFat
